@@ -4,17 +4,19 @@ import { api } from "@/lib/api";
 import { Loading } from "@/components/common";
 import ShareCard from "@/components/ShareCard";
 import {
-  Flame, Zap, MessageSquare, Dumbbell, Target, Video, Timer, BookOpen, Users, Trophy,
-  TrendingUp, ArrowRight, ScanLine, CalendarDays, Bell, X,
+  Flame, Zap, MessageSquare, Dumbbell, Target, Timer, BookOpen, Users, Trophy,
+  TrendingUp, ArrowRight, ScanLine, CalendarDays, Bell, X, Radio, GitCompare, Flag,
 } from "lucide-react";
 
 const QUICK = [
   { to: "/coach", label: "AI Coach", icon: MessageSquare },
   { to: "/training", label: "Training Plan", icon: Dumbbell },
+  { to: "/session", label: "Live Session", icon: Radio },
   { to: "/shots", label: "Shot Tracker", icon: Target },
-  { to: "/form", label: "Form Analysis", icon: ScanLine },
-  { to: "/film", label: "Film Room", icon: Video },
+  { to: "/analyze", label: "Analyze", icon: ScanLine },
+  { to: "/compare", label: "Session Compare", icon: GitCompare },
   { to: "/pressure", label: "Pressure Mode", icon: Timer },
+  { to: "/goals", label: "Goals", icon: Flag },
   { to: "/report", label: "Weekly Report", icon: CalendarDays },
   { to: "/skills", label: "Skill Library", icon: BookOpen },
   { to: "/players", label: "Player Lab", icon: Users },

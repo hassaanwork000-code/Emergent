@@ -10,7 +10,7 @@ const MODES = [
   { id: "finishing", label: "Finishing" }, { id: "footwork", label: "Footwork" }, { id: "defense", label: "Defense" },
 ];
 
-export default function FormAnalysis() {
+export default function FormAnalysis({ embedded }) {
   const [mode, setMode] = useState("shooting");
   const [preview, setPreview] = useState(null);
   const [b64, setB64] = useState(null);
@@ -42,7 +42,7 @@ export default function FormAnalysis() {
 
   return (
     <div>
-      <PageHeader title="Form Analysis" subtitle="Upload a photo of your form and get an AI breakdown with a score, issues and a fix." icon={ScanLine} />
+      {!embedded && <PageHeader title="Form Analysis" subtitle="Upload a photo of your form and get an AI breakdown with a score, issues and a fix." icon={ScanLine} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="fade-up">

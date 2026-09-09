@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, MessageSquare, Dumbbell, Target, ScanLine, Video, Clapperboard,
-  Timer, CalendarDays, BookOpen, Users, Trophy, Menu, LogOut, X,
+  LayoutDashboard, MessageSquare, Dumbbell, Target, ScanLine, Clapperboard,
+  Timer, CalendarDays, BookOpen, Users, Trophy, Menu, LogOut, X, Radio, GitCompare, Flag,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -11,18 +11,20 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, testid: "nav-dashboard" },
   { to: "/coach", label: "AI Coach", icon: MessageSquare, testid: "nav-coach" },
   { to: "/training", label: "Training Plan", icon: Dumbbell, testid: "nav-training" },
+  { to: "/session", label: "Live Session", icon: Radio, testid: "nav-session" },
   { to: "/shots", label: "Shot Tracker", icon: Target, testid: "nav-shots" },
-  { to: "/form", label: "Form Analysis", icon: ScanLine, testid: "nav-form" },
-  { to: "/film", label: "Film Room", icon: Video, testid: "nav-film" },
+  { to: "/analyze", label: "Analyze", icon: ScanLine, testid: "nav-analyze" },
   { to: "/clips", label: "Clip History", icon: Clapperboard, testid: "nav-clips" },
+  { to: "/compare", label: "Session Compare", icon: GitCompare, testid: "nav-compare" },
   { to: "/pressure", label: "Pressure Mode", icon: Timer, testid: "nav-pressure" },
+  { to: "/goals", label: "Goals", icon: Flag, testid: "nav-goals" },
   { to: "/report", label: "Weekly Report", icon: CalendarDays, testid: "nav-report" },
   { to: "/skills", label: "Skill Library", icon: BookOpen, testid: "nav-skills" },
   { to: "/players", label: "Player Lab", icon: Users, testid: "nav-players" },
   { to: "/achievements", label: "Achievements", icon: Trophy, testid: "nav-achievements" },
 ];
 
-const MOBILE_NAV = [NAV[0], NAV[1], NAV[3], NAV[5], NAV[9]];
+const MOBILE_NAV = [NAV[0], NAV[1], NAV[3], NAV[5], NAV[10]];
 
 function Logo() {
   return (

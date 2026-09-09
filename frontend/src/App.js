@@ -12,8 +12,10 @@ import Dashboard from "@/pages/Dashboard";
 import Coach from "@/pages/Coach";
 import TrainingPlan from "@/pages/TrainingPlan";
 import ShotTracker from "@/pages/ShotTracker";
-import FormAnalysis from "@/pages/FormAnalysis";
-import FilmRoom from "@/pages/FilmRoom";
+import LiveSession from "@/pages/LiveSession";
+import Analyze from "@/pages/Analyze";
+import Compare from "@/pages/Compare";
+import Goals from "@/pages/Goals";
 import ClipHistory from "@/pages/ClipHistory";
 import Pressure from "@/pages/Pressure";
 import WeeklyReport from "@/pages/WeeklyReport";
@@ -52,8 +54,12 @@ function AppRoutes() {
       <Route path="/coach" element={<Protected><Coach /></Protected>} />
       <Route path="/training" element={<Protected><TrainingPlan /></Protected>} />
       <Route path="/shots" element={<Protected><ShotTracker /></Protected>} />
-      <Route path="/form" element={<Protected><FormAnalysis /></Protected>} />
-      <Route path="/film" element={<Protected><FilmRoom /></Protected>} />
+      <Route path="/session" element={<Protected><LiveSession /></Protected>} />
+      <Route path="/analyze" element={<Protected><Analyze /></Protected>} />
+      <Route path="/compare" element={<Protected><Compare /></Protected>} />
+      <Route path="/goals" element={<Protected><Goals /></Protected>} />
+      <Route path="/form" element={<Navigate to="/analyze" replace />} />
+      <Route path="/film" element={<Navigate to="/analyze" replace />} />
       <Route path="/clips" element={<Protected><ClipHistory /></Protected>} />
       <Route path="/pressure" element={<Protected><Pressure /></Protected>} />
       <Route path="/report" element={<Protected><WeeklyReport /></Protected>} />

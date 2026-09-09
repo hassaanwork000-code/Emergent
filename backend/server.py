@@ -454,11 +454,49 @@ async def progress_trends(user: dict = Depends(get_current_user)):
     return {"weeks": weeks}
 
 
+async def build_recent_context(user_id: str) -> str:
+    """Summarize the player's recent training so the coach can reference real reps."""
+    now = datetime.now(timezone.utc)
+    wk_ago = now - timedelta(days=7)
+    shots = await db.shots.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    recent_shots = [s for s in shots if (p := _parse_dt(s.get("created_at", ""))) and p >= wk_ago]
+    parts = []
+    if recent_shots:
+        made = sum(1 for s in recent_shots if s.get("made"))
+        att = len(recent_shots)
+        by_zone = {}
+        for s in recent_shots:
+            z = s.get("zone", "?")
+            by_zone.setdefault(z, [0, 0])
+            by_zone[z][1] += 1
+            if s.get("made"):
+                by_zone[z][0] += 1
+        zpct = {z: v[0] / v[1] for z, v in by_zone.items() if v[1] >= 2}
+        weak = min(zpct, key=zpct.get) if zpct else None
+        line = f"Last 7 days shooting: {made}/{att} ({round(made/att*100)}%)."
+        if weak:
+            line += f" Coldest zone: {weak} at {round(zpct[weak]*100)}%."
+        parts.append(line)
+    streak = await compute_streak(user_id)
+    sessions_7d = await db.workouts.count_documents({"user_id": user_id, "created_at": {"$gte": wk_ago.isoformat()}})
+    parts.append(f"Current streak: {streak} days. Sessions in last 7 days: {sessions_7d}.")
+    last_analysis = await db.analyses.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(1)
+    if last_analysis:
+        a = last_analysis[0]
+        res = a.get("result") or {}
+        parts.append(f"Most recent {a.get('kind')} {a.get('mode')} analysis scored {res.get('score')}/100; biggest issue: {res.get('biggest_issue')}.")
+    ch = await db.challenges.find({"user_id": user_id}, {"_id": 0, "makes": 1}).to_list(500)
+    if ch:
+        parts.append(f"Best pressure run: {max(c['makes'] for c in ch)} makes.")
+    return " ".join(parts) if parts else "No tracked training yet."
+
+
 # ---------------- Coach ----------------
 @api_router.post("/coach/chat")
 async def coach_chat(body: ChatBody, user: dict = Depends(get_current_user)):
     session_id = body.session_id or f"user-{user['id']}"
-    system = COACH_SYSTEM.format(profile=profile_block(user))
+    recent = await build_recent_context(user["id"])
+    system = COACH_SYSTEM.format(profile=profile_block(user)) + f"\nRECENT TRAINING (reference these real reps, don't invent others): {recent}"
     # include short recent history for context
     hist = await db.messages.find({"user_id": user["id"], "session_id": session_id}, {"_id": 0}).sort("created_at", 1).to_list(20)
     context = "\n".join(f"{m['role']}: {m['text']}" for m in hist[-6:])
@@ -538,6 +576,111 @@ async def shots_log(body: ShotLogBody, user: dict = Depends(get_current_user)):
 async def get_shots(user: dict = Depends(get_current_user)):
     makes, attempts, pct, by_zone = await shot_stats(user["id"])
     return {"total": attempts, "makes": makes, "pct": pct, "by_zone": by_zone}
+
+
+# ---------------- Live Shooting Sessions ----------------
+class SessionShot(BaseModel):
+    zone: str
+    shot_type: str = "session"
+    made: bool
+
+
+class SessionFinishBody(BaseModel):
+    shots: List[SessionShot]
+    duration_sec: int = 0
+
+
+@api_router.post("/sessions/finish")
+async def session_finish(body: SessionFinishBody, user: dict = Depends(get_current_user)):
+    if not body.shots:
+        raise HTTPException(status_code=400, detail="No shots logged")
+    sid = str(uuid.uuid4())
+    ts = now_iso()
+    by_zone = {}
+    docs = []
+    for s in body.shots:
+        by_zone.setdefault(s.zone, {"makes": 0, "attempts": 0})
+        by_zone[s.zone]["attempts"] += 1
+        if s.made:
+            by_zone[s.zone]["makes"] += 1
+        docs.append({"id": str(uuid.uuid4()), "user_id": user["id"], "zone": s.zone,
+                     "shot_type": s.shot_type, "made": s.made, "dribble_count": 0,
+                     "contested": False, "session_id": sid, "created_at": ts})
+    await db.shots.insert_many(docs)
+    makes = sum(1 for s in body.shots if s.made)
+    attempts = len(body.shots)
+    pct = round(makes / attempts * 100) if attempts else 0
+    weak = None
+    zpct = {z: v["makes"] / v["attempts"] for z, v in by_zone.items() if v["attempts"] >= 2}
+    if zpct:
+        weak = min(zpct, key=zpct.get)
+    # short AI recap
+    try:
+        sys = ("You are Elite Coach giving a 2-3 line recap of a shooting session. Be specific and encouraging "
+               "but honest. No preamble.\n" + profile_block(user))
+        prompt = (f"Session: {makes}/{attempts} ({pct}%). By zone: "
+                  + ", ".join(f"{z} {v['makes']}/{v['attempts']}" for z, v in by_zone.items())
+                  + (f". Coldest zone: {weak}." if weak else "") + " Give the recap.")
+        recap = await ai_text(sys, prompt, f"session-{user['id']}")
+    except Exception as e:
+        logger.error(f"session recap failed: {e}")
+        recap = f"Logged {makes}/{attempts} ({pct}%). Keep stacking quality reps."
+    session = {"id": sid, "user_id": user["id"], "makes": makes, "attempts": attempts, "pct": pct,
+               "by_zone": by_zone, "weak_zone": weak, "duration_sec": body.duration_sec,
+               "recap": recap, "created_at": ts}
+    await db.sessions.insert_one({k: v for k, v in session.items()})
+    await insert_workout(user["id"], "session")
+    session.pop("user_id", None)
+    return session
+
+
+@api_router.get("/sessions")
+async def list_sessions(user: dict = Depends(get_current_user)):
+    sess = await db.sessions.find({"user_id": user["id"]}, {"_id": 0, "user_id": 0}).sort("created_at", -1).to_list(200)
+    return {"sessions": sess}
+
+
+@api_router.get("/sessions/{sid}")
+async def get_session(sid: str, user: dict = Depends(get_current_user)):
+    s = await db.sessions.find_one({"id": sid, "user_id": user["id"]}, {"_id": 0, "user_id": 0})
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"session": s}
+
+
+# ---------------- Goals ----------------
+class GoalUpdateBody(BaseModel):
+    text: str
+    target_date: Optional[str] = None
+    progress: int = 0
+
+
+@api_router.get("/goals")
+async def get_goals(user: dict = Depends(get_current_user)):
+    profile_goals = (user.get("profile") or {}).get("goals") or []
+    stored = await db.goals.find({"user_id": user["id"]}, {"_id": 0, "user_id": 0}).to_list(100)
+    by_text = {g["text"]: g for g in stored}
+    goals = []
+    for t in profile_goals:
+        g = by_text.get(t, {"text": t, "target_date": None, "progress": 0})
+        goals.append(g)
+    # include any custom goals not in profile
+    for g in stored:
+        if g["text"] not in profile_goals:
+            goals.append(g)
+    return {"goals": goals}
+
+
+@api_router.post("/goals/update")
+async def update_goal(body: GoalUpdateBody, user: dict = Depends(get_current_user)):
+    progress = max(0, min(100, body.progress))
+    await db.goals.update_one(
+        {"user_id": user["id"], "text": body.text},
+        {"$set": {"user_id": user["id"], "text": body.text, "target_date": body.target_date,
+                  "progress": progress, "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True, "text": body.text, "target_date": body.target_date, "progress": progress}
 
 
 # ---------------- Form / Video analysis ----------------

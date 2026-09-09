@@ -36,6 +36,15 @@ Auth, deep onboarding, dashboard, AI coach (+TTS), training plan generator, shot
 - ✅ Progress Trends — GET /api/progress/trends (8-week buckets: fg_pct + dev_score); recharts line chart on Weekly Report.
 - ✅ Streak reminders — dashboard `trained_today` drives a nudge banner + once-a-day browser Notification.
 
+### Iteration 3 (2026-06 — 14/14 green)
+- ✅ Coach Memory — coach prompt now injects recent training (7-day FG%, coldest zone, streak, last analysis score/issue, best pressure run) so advice references real reps.
+- ✅ Analyze hub — merged Form Analysis (Photo) + Film Room (Video) into one `/analyze` page with tabs; `/form` & `/film` redirect there.
+- ✅ Live Shooting Session (`/session`) — timed session with live heatmap + make/miss/undo, `POST /api/sessions/finish` aggregates + returns an AI recap, writes shots (session_id) and a workout. `sessions` collection.
+- ✅ Session Compare (`/compare`) — pick two shooting sessions or two analyses, rendered side-by-side.
+- ✅ Goal Countdown (`/goals`) — `/api/goals` seeded from profile goals; per-goal target date + progress slider with live days-left countdown. `goals` collection.
+- ✅ Shareable Trend — canvas export of the 8-week dev-score/FG% line as a share/download card.
+- ✅ Voice-first Coach — Web Speech API mic on the coach input (STT), auto-sends the transcript.
+
 ## Backlog / Remaining
 - P1: Emergent Google social login (deferred by user).
 - P2 (from code review): async object-storage calls (to_thread/httpx), Mongo aggregations for shots/streak, TTS audio → object storage w/ TTL, rate-limit AI player lookup, signed file URLs instead of `?token=`.

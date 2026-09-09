@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 3 tests of NEW features complete. Backend: 14/14 pytest green (test_iter3.py). /api/coach/chat returns {reply, session_id}; /api/coach/history persists user+assistant. /api/sessions/finish returns full payload (id, makes, attempts, pct, by_zone, weak_zone, duration_sec, recap, created_at), 6-shot payload verified: makes=3/attempts=6/pct=50/weak_zone='paint' (0/2). Session shots increased /api/shots.total by exactly 6 and inserted a workout (dashboard.trained_today flipped to true). GET /api/sessions lists new session; GET /api/sessions/{id} works; unknown id -> 404; empty shots -> 400. /api/goals seeds from profile.goals with {text,target_date,progress}; /api/goals/update clamps progress (250->100, -10->0) and follow-up GET reflects saved values incl target_date='2026-12-31'. Regression: /api/dashboard has trained_today (bool) and development_score (int); /api/auth/me + signup + /shots/log still work. Frontend (Chromium via public URL): /session Start -> zone-top -> make/make/miss -> undo -> corner-L make/miss -> Finish shows AI session-recap (len=360) with result shot chart. /goals renders 3 goal cards (goal-<text>), slider persists (60), date input accepts 2026-06-30, countdown 'Nd left' shows. /compare mode toggles work; sessions mode dropdowns rendered 4 options and compare-result renders two shot charts side-by-side; analyses mode 4 options + score breakdown compare works. /analyze tabs analyze-tab-photo/video both mount form-file-input/form-analyze and film-source-upload/film-source-record; /form and /film redirect to /analyze. /report share-trend-btn present and clickable without crash. /coach coach-mic present (SpeechRecognition supported) and toggles listening state without crash. No new bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/report TrendChart", "issues": ["Console warning: 'The width(-1) and height(-1) of chart should be greater than 0' from Recharts ResponsiveContainer during initial mount (chart still renders after layout settles). Consider giving the container an explicit min height."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter3.py",
+    "/app/test_reports/pytest/iter3_results.xml"
+  ],
+  "action_items": [
+    "Low priority: fix Recharts ResponsiveContainer -1 width/height warning by ensuring parent has min-height on first paint."
+  ],
+  "critical_code_review_comments": [
+    "build_recent_context loads up to 10k shots into memory per /coach/chat call; add a Mongo $gte week-window filter (created_at >= wk_ago.isoformat()) at the query level so recent-context cost stays flat as history grows.",
+    "session_finish stores by_zone as {zone: {makes, attempts}} but GET returns dict of dicts with integer keys — fine, just make sure frontend ShotChart tolerates missing zones (it does).",
+    "GET /api/goals returns 'any stored goal not in profile.goals' concatenated after profile goals. If a user has old goals for a text the profile no longer lists, these still surface — consider a delete endpoint or a stale-goal cleanup.",
+    "coach_chat concatenates last 6 message history AND injects recent training context, growing prompt size; consider trimming based on token budget rather than fixed 6 messages once history gets long."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3.py"],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% of tested new-feature flows"},
+  "test_credentials": "smoke@test.com / test1234 (onboarded, now has 4+ sessions, 28+ shots, 3 profile goals incl 'Improve handle').",
+  "seed_data_creation": "Created 1 TEST_ signup + several sessions/shots/goal updates on the smoke user. No production data outside test scope mutated.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Sessions and shots share the shots collection (session shots carry session_id). /api/shots returns AGGREGATED shape {total, makes, pct, by_zone} — NOT a shots array. Compare page needs at least 2 items of the selected mode; smoke user now has enough sessions AND analyses. Session recap AI call ~4-7s at test time. coach-mic toggle triggers permission prompt but wrapped in try/catch — safe."
+}

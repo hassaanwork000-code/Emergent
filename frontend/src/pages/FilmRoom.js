@@ -38,7 +38,7 @@ async function extractFrames(url, count = 5) {
   });
 }
 
-export default function FilmRoom() {
+export default function FilmRoom({ embedded }) {
   const [mode, setMode] = useState("shooting");
   const [source, setSource] = useState("upload");
   const [videoUrl, setVideoUrl] = useState(null);
@@ -109,7 +109,7 @@ export default function FilmRoom() {
 
   return (
     <div>
-      <PageHeader title="Film Room" subtitle="Record on your webcam or upload a clip. Your coach breaks down the motion frame by frame." icon={Video} />
+      {!embedded && <PageHeader title="Film Room" subtitle="Record on your webcam or upload a clip. Your coach breaks down the motion frame by frame." icon={Video} />}
 
       <div className="mb-4 fade-up">
         <span className="text-xs uppercase tracking-widest text-gray-500">Analyze</span>

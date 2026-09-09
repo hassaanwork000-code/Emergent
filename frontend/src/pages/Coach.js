@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, useTTS } from "@/lib/api";
 import { PageHeader } from "@/components/common";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Volume2, VolumeX, Loader2, Headphones } from "lucide-react";
+import { MessageSquare, Send, Volume2, VolumeX, Loader2, Headphones, Mic } from "lucide-react";
 
 const PRESETS = [
   "What should I work on today?",
@@ -19,6 +19,31 @@ export default function Coach() {
   const [autoSpeak, setAutoSpeak] = useState(false);
   const { speak, playing, loading: ttsLoading } = useTTS();
   const scrollRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const [listening, setListening] = useState(false);
+  const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  const toggleMic = () => {
+    if (!speechSupported) return;
+    if (listening) { recognitionRef.current?.stop(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang = "en-US"; rec.interimResults = true; rec.continuous = false;
+    let finalText = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t; else interim += t;
+      }
+      setInput((finalText + interim).trim());
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => { setListening(false); if (finalText.trim()) send(finalText.trim()); };
+    recognitionRef.current = rec;
+    setInput("");
+    try { rec.start(); setListening(true); } catch { setListening(false); }
+  };
 
   useEffect(() => { api.get("/coach/history").then(({ data }) => setMessages(data.messages)); }, []);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, sending]);
@@ -103,7 +128,14 @@ export default function Coach() {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex gap-2 pt-2 border-t border-[#282C37]">
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask your coach…" data-testid="coach-input"
+        {speechSupported && (
+          <button type="button" onClick={toggleMic} data-testid="coach-mic"
+            className={`rounded-full h-12 w-12 flex items-center justify-center shrink-0 border transition-colors ${
+              listening ? "border-[#FF3B30] text-[#FF3B30] pulse-ring" : "border-[#282C37] text-gray-400 hover:border-[#C6FF00] hover:text-white"}`}>
+            <Mic className="h-5 w-5" />
+          </button>
+        )}
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={listening ? "Listening…" : "Ask your coach…"} data-testid="coach-input"
           className="flex-1 rounded-full bg-[#121318] border border-[#282C37] px-4 py-3 text-white placeholder:text-gray-600 focus:border-[#C6FF00] focus:outline-none transition-colors" />
         <button type="submit" disabled={sending || !input.trim()} data-testid="coach-send"
           className="btn-lime rounded-full h-12 w-12 flex items-center justify-center shrink-0">
