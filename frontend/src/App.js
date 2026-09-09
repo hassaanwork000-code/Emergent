@@ -16,6 +16,9 @@ import LiveSession from "@/pages/LiveSession";
 import Analyze from "@/pages/Analyze";
 import Compare from "@/pages/Compare";
 import Goals from "@/pages/Goals";
+import IqLab from "@/pages/IqLab";
+import DnaEvolution from "@/pages/DnaEvolution";
+import ArchetypeLab from "@/pages/ArchetypeLab";
 import ClipHistory from "@/pages/ClipHistory";
 import Pressure from "@/pages/Pressure";
 import WeeklyReport from "@/pages/WeeklyReport";
@@ -58,6 +61,9 @@ function AppRoutes() {
       <Route path="/analyze" element={<Protected><Analyze /></Protected>} />
       <Route path="/compare" element={<Protected><Compare /></Protected>} />
       <Route path="/goals" element={<Protected><Goals /></Protected>} />
+      <Route path="/iq" element={<Protected><IqLab /></Protected>} />
+      <Route path="/dna" element={<Protected><DnaEvolution /></Protected>} />
+      <Route path="/archetype" element={<Protected><ArchetypeLab /></Protected>} />
       <Route path="/form" element={<Navigate to="/analyze" replace />} />
       <Route path="/film" element={<Navigate to="/analyze" replace />} />
       <Route path="/clips" element={<Protected><ClipHistory /></Protected>} />

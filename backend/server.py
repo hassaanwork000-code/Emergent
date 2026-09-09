@@ -29,6 +29,12 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 from seed_data import (
     ARCHETYPES, DAILY_1PCT, BADGES, STREAK_MILESTONES, SKILLS, PLAYERS,
 )
+from iq_data import (
+    SCENARIOS, IQ_CATEGORIES, DIFFICULTIES, DNA_CATEGORIES, DNA_DESCRIPTOR,
+    ARCHETYPE_BLUEPRINTS, GAP_PLAYERS,
+)
+
+SCENARIO_BY_ID = {s["id"]: s for s in SCENARIOS}
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -488,6 +494,24 @@ async def build_recent_context(user_id: str) -> str:
     ch = await db.challenges.find({"user_id": user_id}, {"_id": 0, "makes": 1}).to_list(500)
     if ch:
         parts.append(f"Best pressure run: {max(c['makes'] for c in ch)} makes.")
+    iq_attempts = await db.iq_attempts.find({"user_id": user_id}, {"_id": 0}).to_list(5000)
+    if len(iq_attempts) >= 5:
+        cats = {}
+        for a in iq_attempts:
+            cats.setdefault(a["category"], [0, 0])
+            cats[a["category"]][1] += 1
+            if a.get("correct"):
+                cats[a["category"]][0] += 1
+        acc = {c: v[0] / v[1] for c, v in cats.items() if v[1] >= 3}
+        overall = round(sum(1 for a in iq_attempts if a.get("correct")) / len(iq_attempts) * 100)
+        line = f"Basketball IQ test: {overall}% over {len(iq_attempts)} decisions."
+        if acc:
+            weak = min(acc, key=acc.get)
+            line += f" Weakest read: {IQ_CATEGORIES.get(weak, weak)} ({round(acc[weak]*100)}%)."
+        parts.append(line)
+    tgt = await db.archetype_targets.find_one({"user_id": user_id}, {"_id": 0})
+    if tgt:
+        parts.append(f"Target archetype: {tgt['target']} (current fit {tgt.get('fit')}%).")
     return " ".join(parts) if parts else "No tracked training yet."
 
 
@@ -984,6 +1008,396 @@ async def weekly_report(user: dict = Depends(get_current_user)):
         "best_challenge": best_challenge, "streak": streak, "improvement": improvement,
         "focus": focus, "archetype": p.get("primary_archetype"),
     }
+
+
+# ---------------- IQ Simulator / DNA / Archetype Lab ----------------
+async def iq_category_stats(user_id: str):
+    attempts = await db.iq_attempts.find({"user_id": user_id}, {"_id": 0}).to_list(5000)
+    cats = {}
+    for a in attempts:
+        c = a.get("category", "overall")
+        cats.setdefault(c, {"correct": 0, "total": 0})
+        cats[c]["total"] += 1
+        if a.get("correct"):
+            cats[c]["correct"] += 1
+    total = len(attempts)
+    correct = sum(1 for a in attempts if a.get("correct"))
+    return attempts, cats, total, correct
+
+
+def _iq_score(cats, key, min_n=3):
+    d = cats.get(key)
+    if not d or d["total"] < min_n:
+        return None
+    return round(d["correct"] / d["total"] * 100)
+
+
+class IqAnswerBody(BaseModel):
+    scenario_id: str
+    choice: str
+    time_ms: int = 0
+    mode: str = "practice"
+
+
+@api_router.get("/iq/scenarios")
+async def iq_scenarios(user: dict = Depends(get_current_user)):
+    cats = [{"key": k, "label": v} for k, v in IQ_CATEGORIES.items() if k != "overall"]
+    return {"categories": cats, "difficulties": DIFFICULTIES, "total": len(SCENARIOS)}
+
+
+@api_router.get("/iq/next")
+async def iq_next(category: Optional[str] = None, difficulty: Optional[str] = None,
+                  mode: str = "practice", user: dict = Depends(get_current_user)):
+    pool = [s for s in SCENARIOS
+            if (not category or category == "all" or s["category"] == category)
+            and (not difficulty or difficulty == "all" or s["difficulty"] == difficulty)]
+    if not pool:
+        pool = SCENARIOS
+    # prefer scenarios the user has answered least recently
+    seen = await db.iq_attempts.find({"user_id": user["id"]}, {"_id": 0, "scenario_id": 1}).to_list(5000)
+    counts = {}
+    for a in seen:
+        counts[a["scenario_id"]] = counts.get(a["scenario_id"], 0) + 1
+    pool.sort(key=lambda s: counts.get(s["id"], 0))
+    least = counts.get(pool[0]["id"], 0)
+    import random
+    choice = random.choice([s for s in pool if counts.get(s["id"], 0) == least])
+    q = {k: choice[k] for k in ("id", "category", "difficulty", "situation", "position", "context", "options")}
+    q["category_label"] = IQ_CATEGORIES.get(choice["category"], choice["category"])
+    return {"scenario": q}
+
+
+@api_router.post("/iq/answer")
+async def iq_answer(body: IqAnswerBody, user: dict = Depends(get_current_user)):
+    sc = SCENARIO_BY_ID.get(body.scenario_id)
+    if not sc:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+    correct = body.choice == sc["correct"]
+    acceptable = correct or body.choice in sc.get("alternatives", [])
+    await db.iq_attempts.insert_one({
+        "id": str(uuid.uuid4()), "user_id": user["id"], "scenario_id": sc["id"], "category": sc["category"],
+        "difficulty": sc["difficulty"], "choice": body.choice, "correct": correct, "acceptable": acceptable,
+        "time_ms": body.time_ms, "mode": body.mode, "created_at": now_iso(),
+    })
+    return {
+        "correct": correct, "acceptable": acceptable, "correct_key": sc["correct"],
+        "best_decision": sc["best_decision"], "why": sc["why"], "defense_giving": sc["defense_giving"],
+        "should_notice": sc["should_notice"],
+        "alternatives": [o["text"] for o in sc["options"] if o["key"] in sc.get("alternatives", [])],
+        "game_application": sc["game_application"],
+    }
+
+
+@api_router.get("/iq/profile")
+async def iq_profile(user: dict = Depends(get_current_user)):
+    attempts, cats, total, correct = await iq_category_stats(user["id"])
+    categories = []
+    for key, label in IQ_CATEGORIES.items():
+        if key == "overall":
+            continue
+        score = _iq_score(cats, key)
+        categories.append({"key": key, "label": label, "score": score,
+                           "attempts": cats.get(key, {}).get("total", 0)})
+    overall = round(correct / total * 100) if total >= 5 else None
+    times = [a["time_ms"] for a in attempts if a.get("time_ms")]
+    avg_time = round(sum(times) / len(times) / 1000, 1) if times else None
+    # repeated mistakes: scenarios missed more than once
+    miss = {}
+    for a in attempts:
+        if not a.get("acceptable"):
+            miss[a["scenario_id"]] = miss.get(a["scenario_id"], 0) + 1
+    repeated = [SCENARIO_BY_ID[s]["situation"][:80] + "…" for s, c in miss.items() if c >= 2 and s in SCENARIO_BY_ID]
+    return {"categories": categories, "overall": overall, "total_answered": total,
+            "correct": correct, "avg_decision_sec": avg_time, "repeated_mistakes": repeated[:5]}
+
+
+@api_router.get("/iq/insights")
+async def iq_insights(user: dict = Depends(get_current_user)):
+    attempts, cats, total, correct = await iq_category_stats(user["id"])
+    if total < 6:
+        return {"enough_data": False, "message": "Not enough data yet. Complete at least 6 scenarios to unlock coach insights."}
+    scored = [(k, _iq_score(cats, k)) for k in IQ_CATEGORIES if k != "overall"]
+    scored = [(k, v) for k, v in scored if v is not None]
+    weakest = min(scored, key=lambda x: x[1]) if scored else None
+    summary_data = ", ".join(f"{IQ_CATEGORIES[k]} {v}%" for k, v in scored)
+    sys = ("You are Elite Coach analyzing a player's basketball-IQ decision test results. Return ONLY valid JSON, no prose. "
+           "Identify the clearest decision-making pattern and give focused guidance.\n" + profile_block(user))
+    prompt = (f"Category accuracy: {summary_data}. Overall {round(correct/total*100)}% over {total} scenarios. "
+              'Return JSON: {"summary":"one specific pattern sentence","recommended_skill":"a skill name","recommended_drill":"a concrete drill","recommended_player":"a player to study","training_priority":"one priority"}')
+    try:
+        raw = await ai_text(sys, prompt, f"iq-{user['id']}")
+        data = _extract_json(raw)
+    except Exception as e:
+        logger.error(f"iq insights failed: {e}")
+        wk = IQ_CATEGORIES[weakest[0]] if weakest else "help defense"
+        data = {"summary": f"Your weakest read is {wk} ({weakest[1] if weakest else 0}%). Focus reps there.",
+                "recommended_skill": "pnr-read", "recommended_drill": "Live 2-on-1 read reps",
+                "recommended_player": "Chris Paul", "training_priority": wk}
+    data["enough_data"] = True
+    data["weakest_category"] = weakest[0] if weakest else None
+    return data
+
+
+async def compute_dna(user: dict):
+    uid = user["id"]
+    _, cats, iq_total, iq_correct = await iq_category_stats(uid)
+    makes, attempts, pct, by_zone = await shot_stats(uid)
+    analyses = await db.analyses.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    by_mode = {}
+    for a in analyses:
+        m = a.get("mode")
+        if m and m not in by_mode and a.get("result", {}).get("score") is not None:
+            by_mode[m] = a["result"]["score"]
+
+    def iqs(key, n=3):
+        return _iq_score(cats, key, n)
+
+    scores = {}
+    # shooting
+    if attempts >= 8:
+        scores["shooting"] = max(20, min(99, round(35 + pct)))
+    elif by_mode.get("shooting") is not None:
+        scores["shooting"] = by_mode["shooting"]
+    # finishing
+    paint = by_zone.get("paint", {})
+    if paint.get("attempts", 0) >= 4:
+        scores["finishing"] = max(20, min(99, round(35 + (paint["makes"] / paint["attempts"] * 100))))
+    elif by_mode.get("finishing") is not None:
+        scores["finishing"] = by_mode["finishing"]
+    # handle / footwork / defense from video/form analyses
+    if by_mode.get("handle") is not None:
+        scores["handle"] = by_mode["handle"]
+    if by_mode.get("footwork") is not None:
+        scores["footwork"] = by_mode["footwork"]
+    dpos = [iqs("help_defense"), iqs("defensive_positioning"), iqs("closeout_reads")]
+    dpos = [x for x in dpos if x is not None]
+    if by_mode.get("defense") is not None:
+        dpos.append(by_mode["defense"])
+    if dpos:
+        scores["defense"] = round(sum(dpos) / len(dpos))
+    # creation from offensive IQ
+    cre = [iqs("pick_and_roll"), iqs("shot_selection")]
+    cre = [x for x in cre if x is not None]
+    if cre:
+        scores["creation"] = round(sum(cre) / len(cre))
+    if iqs("passing_reads") is not None:
+        scores["playmaking"] = iqs("passing_reads")
+    if iqs("transition") is not None:
+        scores["pace"] = iqs("transition")
+    if iqs("spacing") is not None:
+        scores["off_ball"] = iqs("spacing")
+    if iq_total >= 5:
+        scores["basketball_iq"] = round(iq_correct / iq_total * 100)
+        scores["decision_making"] = scores["basketball_iq"]
+    # athleticism/rebounding/post: no reliable signal -> leave None
+    result = []
+    for key, label in DNA_CATEGORIES:
+        result.append({"key": key, "label": label, "score": scores.get(key)})
+    return result, scores
+
+
+def dna_label(scores: dict, user: dict) -> str:
+    primary = (user.get("profile") or {}).get("primary_archetype") or "Developing Player"
+    avail = {k: v for k, v in scores.items() if v is not None and k in DNA_DESCRIPTOR}
+    if not avail:
+        return primary
+    top = max(avail, key=avail.get)
+    desc = DNA_DESCRIPTOR.get(top)
+    return f"{primary} + {desc}" if desc and desc not in primary else primary
+
+
+@api_router.get("/dna")
+async def get_dna(user: dict = Depends(get_current_user)):
+    categories, scores = await compute_dna(user)
+    available = {k: v for k, v in scores.items() if v is not None}
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    label = dna_label(scores, user)
+    dev_index = round(sum(available.values()) / len(available)) if available else None
+
+    snaps = await db.dna_snapshots.find({"user_id": user["id"]}, {"_id": 0}).sort("month", 1).to_list(60)
+    prev = snaps[-1] if snaps else None
+    # upsert this month's snapshot
+    story = None
+    if len(available) >= 3:
+        # reuse cached story if this month's snapshot exists with same-ish scores
+        existing_month = next((s for s in snaps if s["month"] == month), None)
+        if existing_month and existing_month.get("story") and existing_month.get("scores") == scores:
+            story = existing_month["story"]
+        else:
+            prior = next((s for s in reversed(snaps) if s["month"] != month), None)
+            delta_txt = ""
+            if prior:
+                deltas = []
+                for k, v in available.items():
+                    pv = (prior.get("scores") or {}).get(k)
+                    if pv is not None and abs(v - pv) >= 3:
+                        deltas.append(f"{k} {'up' if v > pv else 'down'} {abs(v - pv)}")
+                delta_txt = "Changes vs last snapshot: " + (", ".join(deltas) if deltas else "little change") + ". "
+            sys = ("You are Elite Coach writing a short (3-4 sentence) player development story from REAL data only. "
+                   "Never invent stats not given. Be specific and end with the single next priority.\n" + profile_block(user))
+            prompt = (f"Current DNA (0-100, only these are measured): {available}. {delta_txt}Write the development story.")
+            try:
+                story = await ai_text(sys, prompt, f"dna-{user['id']}")
+            except Exception as e:
+                logger.error(f"dna story failed: {e}")
+                story = None
+    await db.dna_snapshots.update_one(
+        {"user_id": user["id"], "month": month},
+        {"$set": {"user_id": user["id"], "month": month, "scores": scores, "label": label,
+                  "dev_index": dev_index, "story": story, "updated_at": now_iso()}},
+        upsert=True)
+
+    snaps = await db.dna_snapshots.find({"user_id": user["id"]}, {"_id": 0, "user_id": 0}).sort("month", 1).to_list(60)
+    timeline = [{"month": s["month"], "label": s.get("label"), "dev_index": s.get("dev_index")} for s in snaps]
+
+    # changes vs previous month snapshot
+    changes = []
+    prior = next((s for s in reversed(snaps) if s["month"] != month), None)
+    if prior:
+        pscores = prior.get("scores") or {}
+        for k, v in available.items():
+            pv = pscores.get(k)
+            if pv is not None and abs(v - pv) >= 5:
+                up = v > pv
+                lbl = dict(DNA_CATEGORIES).get(k, k)
+                changes.append({
+                    "category": lbl,
+                    "what": f"{lbl} {'improved' if up else 'dipped'} {abs(v - pv)} pts ({pv}→{v})",
+                    "why": f"Your recent {'results trended up' if up else 'results trended down'} in this area.",
+                    "data": "Based on your shooting, IQ scenarios and analyses.",
+                    "meaning": f"Your game is leaning {'more' if up else 'less'} into {lbl.lower()}.",
+                    "next": "Keep logging sessions so the trend is clear.",
+                })
+
+    enough = len(available) >= 3
+    return {
+        "categories": categories, "current_label": label, "previous_label": (prior or {}).get("label") if prior else None,
+        "dev_index": dev_index, "timeline": timeline, "changes": changes, "enough_data": enough,
+        "story": story if enough else "Not enough data yet. Complete workouts, shooting sessions and IQ scenarios so your DNA can evolve from real evidence.",
+        "measured_count": len(available), "total_categories": len(DNA_CATEGORIES),
+    }
+
+
+def _blueprint(name):
+    return ARCHETYPE_BLUEPRINTS.get(name) or _generic_blueprint(name)
+
+
+def _generic_blueprint(name):
+    return {"name": name, "emphasis": {"shooting": 0.25, "basketball_iq": 0.25, "creation": 0.25, "decision_making": 0.25},
+            "skills": ["pull-up", "pnr-read"], "habits": ["Master the fundamentals of this role"],
+            "iq_focus": ["shot_selection", "pick_and_roll"], "players": ["lebron-james"],
+            "summary": f"Development blueprint for the {name} archetype."}
+
+
+def _archetype_fit(scores: dict, bp: dict):
+    total_w = 0.0
+    got = 0.0
+    estimated = False
+    gaps = []
+    strengths = []
+    for k, w in bp["emphasis"].items():
+        v = scores.get(k)
+        if v is None:
+            v = 45
+            estimated = True
+        total_w += w
+        got += (v / 100.0) * w
+        lbl = dict(DNA_CATEGORIES).get(k, k)
+        if v >= 65:
+            strengths.append(lbl)
+        elif v < 55:
+            gaps.append(lbl)
+    fit = round((got / total_w) * 100) if total_w else 0
+    return fit, estimated, strengths, gaps
+
+
+class ArchetypeTargetBody(BaseModel):
+    target: str
+
+
+@api_router.get("/archetype/current")
+async def archetype_current(user: dict = Depends(get_current_user)):
+    p = user.get("profile") or {}
+    _, scores = await compute_dna(user)
+    primary = p.get("primary_archetype")
+    bp = _blueprint(primary) if primary else None
+    conf, estimated, strengths, gaps = (_archetype_fit(scores, bp) if bp else (None, True, [], []))
+    return {"primary": primary, "secondary": p.get("secondary_archetype"), "target": p.get("target_archetype"),
+            "confidence": conf, "estimate": estimated, "supporting": strengths[:5], "gaps": gaps[:5],
+            "all_archetypes": list(ARCHETYPE_BLUEPRINTS.keys()) + [a for a in ARCHETYPES if a not in ARCHETYPE_BLUEPRINTS]}
+
+
+@api_router.post("/archetype/target")
+async def archetype_target(body: ArchetypeTargetBody, user: dict = Depends(get_current_user)):
+    bp = _blueprint(body.target)
+    _, scores = await compute_dna(user)
+    fit, estimated, strengths, gaps = _archetype_fit(scores, bp)
+    await db.archetype_targets.update_one(
+        {"user_id": user["id"]},
+        {"$set": {"user_id": user["id"], "target": body.target, "fit": fit, "updated_at": now_iso()}}, upsert=True)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"profile.target_archetype": body.target}})
+    # players to study for the biggest gaps
+    gap_keys = [k for k in bp["emphasis"] if (scores.get(k) is None or scores.get(k) < 60)]
+    study_ids, seen = [], set()
+    for k in gap_keys + bp.get("players", []):
+        for pid in (GAP_PLAYERS.get(k, []) if k in GAP_PLAYERS else [k]):
+            if pid not in seen and any(pl["id"] == pid for pl in PLAYERS):
+                seen.add(pid); study_ids.append(pid)
+    players = [{"id": p["id"], "name": p["name"], "archetype": p["archetype"]}
+               for p in PLAYERS if p["id"] in study_ids][:6]
+    skills = [{"slug": s["slug"], "name": s["name"]} for s in SKILLS if s["slug"] in bp["skills"]]
+    return {
+        "target": body.target, "summary": bp["summary"], "fit": fit, "estimate": estimated,
+        "strengths": strengths, "gaps": gaps, "missing_skills": skills, "habits": bp["habits"],
+        "recommended_drills": bp["habits"], "iq_focus": [{"key": k, "label": IQ_CATEGORIES.get(k, k)} for k in bp["iq_focus"]],
+        "players": players,
+        "development_path": [
+            f"Study the film of {players[0]['name']}" if players else "Study elite models of this archetype",
+            f"Drill your gaps: {', '.join(gaps[:3]) if gaps else 'sharpen your strengths'}",
+            f"Complete IQ scenarios in {', '.join(IQ_CATEGORIES.get(k, k) for k in bp['iq_focus'])}",
+            "Log sessions so your DNA updates and the fit % climbs",
+        ],
+    }
+
+
+class BuildBody(BaseModel):
+    description: str
+
+
+@api_router.post("/archetype/build")
+async def archetype_build(body: BuildBody, user: dict = Depends(get_current_user)):
+    _, scores = await compute_dna(user)
+    sys = ("You are Elite Coach. A player describes a custom build (often referencing pros). Extract TRANSFERABLE traits "
+           "only; never claim they will become those players. Return ONLY valid JSON.\n" + profile_block(user))
+    prompt = (f'Build request: "{body.description}". Current measured DNA scores are: {scores}. '
+              'Return JSON: {"desired_traits":[],"current_traits":[],"missing_traits":[],"training_priorities":[],'
+              '"skills_to_learn":[],"players_to_study":[],"recommended_drills":[],"potential_weaknesses":[]}')
+    try:
+        raw = await ai_text(sys, prompt, f"build-{user['id']}")
+        data = _extract_json(raw)
+    except Exception as e:
+        logger.error(f"build failed: {e}")
+        raise HTTPException(status_code=502, detail="Could not generate build, try rephrasing.")
+    await db.archetype_builds.insert_one({"id": str(uuid.uuid4()), "user_id": user["id"],
+                                          "description": body.description, "result": data, "created_at": now_iso()})
+    return data
+
+
+@api_router.post("/archetype/experiment")
+async def archetype_experiment(body: BuildBody, user: dict = Depends(get_current_user)):
+    _, scores = await compute_dna(user)
+    sys = ("You are Elite Coach running a PLANNING SIMULATION (not a prediction). Answer the player's what-if about "
+           "changing their game. Return ONLY valid JSON.\n" + profile_block(user))
+    prompt = (f'Question: "{body.description}". Current measured DNA: {scores}. '
+              'Return JSON: {"current_profile":"one line","required_changes":[],"skills_needed":[],'
+              '"training_required":[],"potential_benefits":[],"potential_tradeoffs":[]}')
+    try:
+        raw = await ai_text(sys, prompt, f"exp-{user['id']}")
+        data = _extract_json(raw)
+    except Exception as e:
+        logger.error(f"experiment failed: {e}")
+        raise HTTPException(status_code=502, detail="Could not run experiment, try rephrasing.")
+    return data
 
 
 # ---------------- App wiring ----------------

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, MessageSquare, Dumbbell, Target, ScanLine, Clapperboard,
   Timer, CalendarDays, BookOpen, Users, Trophy, Menu, LogOut, X, Radio, GitCompare, Flag,
+  Brain, Dna, FlaskConical,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -10,6 +11,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, testid: "nav-dashboard" },
   { to: "/coach", label: "AI Coach", icon: MessageSquare, testid: "nav-coach" },
+  { to: "/iq", label: "IQ Lab", icon: Brain, testid: "nav-iq" },
+  { to: "/dna", label: "DNA Evolution", icon: Dna, testid: "nav-dna" },
+  { to: "/archetype", label: "Archetype Lab", icon: FlaskConical, testid: "nav-archetype" },
   { to: "/training", label: "Training Plan", icon: Dumbbell, testid: "nav-training" },
   { to: "/session", label: "Live Session", icon: Radio, testid: "nav-session" },
   { to: "/shots", label: "Shot Tracker", icon: Target, testid: "nav-shots" },
@@ -24,7 +28,7 @@ const NAV = [
   { to: "/achievements", label: "Achievements", icon: Trophy, testid: "nav-achievements" },
 ];
 
-const MOBILE_NAV = [NAV[0], NAV[1], NAV[3], NAV[5], NAV[10]];
+const MOBILE_NAV = [NAV[0], NAV[1], NAV[2], NAV[3], NAV[4]];
 
 function Logo() {
   return (

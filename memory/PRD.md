@@ -45,6 +45,13 @@ Auth, deep onboarding, dashboard, AI coach (+TTS), training plan generator, shot
 - ✅ Shareable Trend — canvas export of the 8-week dev-score/FG% line as a share/download card.
 - ✅ Voice-first Coach — Web Speech API mic on the coach input (STT), auto-sends the transcript.
 
+### Iteration 4 (2026-06 — 20/20 green) — three connected labs
+- ✅ Basketball IQ Simulator (`/iq`): static bank of realistic offense/defense decision scenarios (`iq_data.py`), practice + game-like timed modes, per-answer read explanation, per-category IQ profile (null until enough data), repeated-mistake tracking, AI Coach Insights after 6+ reps. Endpoints /api/iq/{scenarios,next,answer,profile,insights}. Collection iq_attempts.
+- ✅ Player DNA Evolution (`/dna`): compute_dna derives 14 category scores from REAL data only (shots, iq_attempts, analyses); unmeasured = "Not enough data yet". Monthly dna_snapshots, evolving label, dev index, timeline, change cards, AI story. Endpoint /api/dna.
+- ✅ Archetype Lab (`/archetype`): current confidence, target gap analysis (fit %, strengths/gaps, skills→/skills, IQ focus→/iq, players→/players), AI Build-Your-Version + Experiment. Collections archetype_targets, archetype_builds. Blueprints + gap→player map in iq_data.py.
+- ✅ Connected loop: IQ → DNA + archetype fit; target → IQ focus deep-links; Coach recent-context includes IQ + target. Per-user isolation verified.
+- Deferred per "build only three": Goal Celebration, Program Builder.
+
 ## Backlog / Remaining
 - P1: Emergent Google social login (deferred by user).
 - P2 (from code review): async object-storage calls (to_thread/httpx), Mongo aggregations for shots/streak, TTS audio → object storage w/ TTL, rate-limit AI player lookup, signed file URLs instead of `?token=`.

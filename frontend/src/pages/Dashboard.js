@@ -6,21 +6,22 @@ import ShareCard from "@/components/ShareCard";
 import {
   Flame, Zap, MessageSquare, Dumbbell, Target, Timer, BookOpen, Users, Trophy,
   TrendingUp, ArrowRight, ScanLine, CalendarDays, Bell, X, Radio, GitCompare, Flag,
+  Brain, Dna, FlaskConical,
 } from "lucide-react";
 
 const QUICK = [
   { to: "/coach", label: "AI Coach", icon: MessageSquare },
+  { to: "/iq", label: "IQ Lab", icon: Brain },
+  { to: "/dna", label: "DNA Evolution", icon: Dna },
+  { to: "/archetype", label: "Archetype Lab", icon: FlaskConical },
   { to: "/training", label: "Training Plan", icon: Dumbbell },
   { to: "/session", label: "Live Session", icon: Radio },
   { to: "/shots", label: "Shot Tracker", icon: Target },
   { to: "/analyze", label: "Analyze", icon: ScanLine },
-  { to: "/compare", label: "Session Compare", icon: GitCompare },
   { to: "/pressure", label: "Pressure Mode", icon: Timer },
-  { to: "/goals", label: "Goals", icon: Flag },
-  { to: "/report", label: "Weekly Report", icon: CalendarDays },
   { to: "/skills", label: "Skill Library", icon: BookOpen },
   { to: "/players", label: "Player Lab", icon: Users },
-  { to: "/achievements", label: "Achievements", icon: Trophy },
+  { to: "/report", label: "Weekly Report", icon: CalendarDays },
 ];
 
 export default function Dashboard() {
