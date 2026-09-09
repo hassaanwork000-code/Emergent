@@ -1,0 +1,140 @@
+{
+  "project_name": "Elite AI Basketball Coach",
+  "app_type": "hybrid_fullstack",
+  "archetype": "THE PERFORMANCE PRO (Tactical Kinetic Athleticism)",
+  "theme": "dark-first",
+  "color_palette": {
+    "background": {
+      "main": "#0A0A0C",
+      "surface": "#121318",
+      "surface_elevated": "#1A1C23",
+      "surface_border": "#282C37"
+    },
+    "brand_accents": {
+      "primary_lime": "#C6FF00",
+      "primary_lime_hover": "#D4FF33",
+      "primary_text_on_lime": "#0A0A0A",
+      "secondary_blue": "#2F80FF",
+      "secondary_blue_glow": "rgba(47, 128, 255, 0.25)"
+    },
+    "status_indicators": {
+      "success": "#00E676",
+      "warning_amber": "#FFB300",
+      "error_red": "#FF3B30",
+      "no_data_gray": "#4A4E5D"
+    },
+    "text": {
+      "primary": "#F4F5F7",
+      "secondary": "#9CA3AF",
+      "muted": "#6B7280",
+      "inverse": "#0A0A0C"
+    }
+  },
+  "typography": {
+    "headings": {
+      "font_family": "'Barlow Condensed', 'Outfit', 'Chivo', sans-serif",
+      "transform": "uppercase",
+      "tracking": "tracking-wide",
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-bold uppercase tracking-normal",
+      "h3_card": "text-xl sm:text-2xl font-bold uppercase tracking-normal",
+      "h4_widget": "text-lg sm:text-xl font-semibold uppercase tracking-wide"
+    },
+    "body": {
+      "font_family": "'Inter', 'DM Sans', system-ui, sans-serif",
+      "standard": "text-base text-gray-300 leading-relaxed",
+      "small": "text-sm text-gray-400 leading-normal",
+      "caption": "text-xs text-gray-500 uppercase tracking-widest"
+    },
+    "metrics_and_numbers": {
+      "font_family": "'JetBrains Mono', 'Space Mono', monospace",
+      "style": "tabular-nums font-bold"
+    }
+  },
+  "layout_and_spacing": {
+    "grid_strategy": "MODE B: High Density Performance Grid & Tactical Bento",
+    "desktop_nav": "Persistent Left Sidebar (Collapsible) + Top Dynamic Header bar with quick CTA & Player XP counter",
+    "mobile_nav": "Fixed Thumb-Friendly Bottom Navigation Bar (Home, AI Coach, Drills, Film Room, Profile) with top notification bar",
+    "spacing_scale": "Tailwind standard p-4, p-6, p-8, gap-6 for tight athletic density without collision",
+    "border_radius": "Subtle tactical roundness: rounded-lg (8px) or rounded-xl (12px) for cards, rounded-full for pills and action badges"
+  },
+  "visual_enhancers": {
+    "tactical_borders": "1px solid #282C37 with inner glow highlight on hover hover:border-[#C6FF00]/50 transition-colors",
+    "tactical_grid_lines": "Subtle dark court-line pattern or dot-matrix overlay background",
+    "glassmorphism": "backdrop-blur-xl bg-[#121318]/80 border border-white/10 for sticky headers and overlays",
+    "neon_glow": "shadow-[0_0_20px_rgba(198,255,0,0.25)] on active CTAs, timer alerts, and share cards"
+  },
+  "image_urls": [
+    {
+      "category": "hero_banner",
+      "description": "Dynamic jump shot action on outdoor court",
+      "url": "https://images.unsplash.com/photo-1645109498343-92eecf4ce600?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHw0fHxiYXNrZXRiYWxsJTIwcGxheWVyJTIwdHJhaW5pbmclMjBjb3VydCUyMGp1bXAlMjBzaG90JTIwYWN0aW9ufGVufDB8fHx8MTc4ODg5NTgwOHww&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "film_room_hero",
+      "description": "High-flying dunk shot in dark indoor gym with dramatic lighting",
+      "url": "https://images.unsplash.com/photo-1608245449230-4ac19066d2d0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxiYXNrZXRiYWxsJTIwY291cnR8ZW58MHx8fHwxNzg4ODk1ODE5fDA&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "form_analysis_demo",
+      "description": "Player laying up on indoor hardwood court",
+      "url": "https://images.unsplash.com/photo-1603668103905-3ef7c99d7f9f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxiYXNrZXRiYWxsJTIwcGxheWVyJTIwdHJhaW5pbmclMjBjb3VydCUyMGp1bXAlMjBzaG90JTIwYWN0aW9ufGVufDB8fHx8MTc4ODg5NTgwOHww&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "shot_chart_background",
+      "description": "Basketball hoop with rim and net closeup",
+      "url": "https://images.unsplash.com/photo-1546519638-68e109498ffc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwY291cnR8ZW58MHx8fHwxNzg4ODk1ODE5fDA&ixlib=rb-4.1.0&q=85"
+    },
+    {
+      "category": "player_lab_avatar_default",
+      "description": "Athletic basketball player in stance on open court",
+      "url": "https://images.unsplash.com/photo-1612768875331-0447b960fa40?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwcGxheWVyJTIwdHJhaW5pbmclMjBjb3VydCUyMGp1bXAlMjBzaG90JTIwYWN0aW9ufGVufDB8fHx8MTc4ODg5NTgwOHww&ixlib=rb-4.1.0&q=85"
+    }
+  ],
+  "key_features_design_rules": {
+    "home_dashboard": {
+      "components": "Player Overview Card, Today's Priority Workout, Development Score Gauge, Daily 1% Challenge, Quick Action Grid",
+      "visual": "Monochrome dark cards with high-contrast Electric Lime accents for CTA buttons and Electric Blue for AI progress indicators."
+    },
+    "ai_coach_chat": {
+      "components": "Interactive Chat Interface, Voice Toggle (OpenAI TTS Onyx), Saved Advice History drawer, Preset tactical prompts",
+      "visual": "Message bubbles with subtle 1px border. Coach messages featured in dark surface with lime accent avatar border; TTS button glows electric blue when audio is playing."
+    },
+    "shot_tracker_and_heatmap": {
+      "components": "SVG Half-Court Diagram with 8-12 interactive shot zones (Corner 3s, Wing 3s, Key, Elbows, Paint, Mid-range)",
+      "visual": "Zone bubbles colored dynamically: Green (#00E676) >= 50%, Amber (#FFB300) 40-49%, Red (#FF3B30) < 40%, Gray (#4A4E5D) for no-data. Tap zone to log make/miss."
+    },
+    "pressure_mode": {
+      "components": "Countdown Timer (30s/60s/90s), Large MAKE (Green) / MISS (Red) buttons, Live FG% display, High-score tracker, Audio buzzer effect",
+      "visual": "Hyper-focused full-screen or focused modal view with massive digital clock font in JetBrains Mono and high-visibility physical-feel tap targets."
+    },
+    "film_room_and_form_analysis": {
+      "components": "Webcam Recorder / Video Uploader, Frame Extractor, Multi-Frame Pose/Motion Overlay breakdown, AI Analysis Scorecard",
+      "visual": "Dark video player container with lime HUD telemetry overlays (knee angle, release angle, balance line) and collapsible JSON breakdown specs."
+    },
+    "skill_library_and_player_lab": {
+      "components": "Search & Category Filters (24 skills across 6 categories), Video Modal with TTS AI Walkthrough, Elite Player Cards (~20 players) with AI comparison lookup",
+      "visual": "Grid of responsive skill cards featuring quick-play tags, difficulty badges (Rookie, Varsity, Pro, Elite), and animated completion checkboxes."
+    },
+    "share_card_and_achievements": {
+      "components": "Streak Counter, Badge Grid, Customizable Exportable Share Card (HTML canvas/PNG generator with player stats, level, and elite grade)",
+      "visual": "High-voltage neon card design with watermark logo, player photo overlay, electric lime border highlight, and one-click 'Download Card' / 'Copy Link' action."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Use JavaScript (.js and .jsx files) for React components, NOT TypeScript (.tsx).",
+    "Maintain strict dark theme as default (#0A0A0C background, #121318 cards, #C6FF00 primary accent).",
+    "Never use transparent backgrounds without blur/scrim on headers, dropdowns, or floating bars.",
+    "Add 'data-testid' to all buttons, links, inputs, chat elements, shot chart zones, timer buttons, and tabs for automated test validation.",
+    "Ensure all interactive components have explicit hover, active, and focus styles matching contrast guidelines.",
+    "Implement full mobile responsiveness with bottom navigation on phone viewports and persistent sidebar on desktop viewports.",
+    "Use Lucide icons or Phosphor icons, avoid AI assistant emojis (e.g., 🤖, 🧠, 🎯)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": {
+    "no_ai_slop": "Avoid generic Vercel/Stripe gray designs. Use athletic tactical typography, tight borders, high-contrast neons, and clear data hierarchy.",
+    "spacing": "Maintain generous spacing (p-4 to p-8) and keep card containers separated with gap-6.",
+    "transitions": "Use explicit transitions such as 'transition-colors duration-200' or 'transition-transform duration-200'. Never use universal 'transition: all'.",
+    "text_alignment": "Left-align body paragraphs and labels. Heading alignment can be centered in hero banners or share cards.",
+    "accessibility": "Ensure text contrast meets WCAG AA standards. High contrast dark text (#0A0A0A) on Electric Lime buttons (#C6FF00)."
+  }
+}

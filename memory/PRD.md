@@ -1,0 +1,38 @@
+# Elite AI Basketball Coach — PRD
+
+## Original Problem Statement
+Responsive web app (desktop + mobile) for ambitious basketball players acting as a personal trainer, shooting coach, film analyst, and development tracker. Web rebuild of an existing mobile app. Stack: React + FastAPI + MongoDB, Emergent Universal LLM key (Claude Sonnet 5), OpenAI TTS (onyx), Emergent Object Storage for videos, email/password JWT auth.
+
+## User Choices
+- AI: Claude Sonnet 5 (`anthropic/claude-sonnet-5`) via Emergent Universal Key
+- TTS: OpenAI `tts-1`, voice `onyx`
+- Auth: Email/password JWT only (Google login deferred)
+- Build order: everything, then test
+- Seed data (24 skills, ~20 players) authored in-app
+- Budget-conscious build
+
+## Architecture
+- Backend `/app/backend/server.py` — all `/api` routes; `seed_data.py` holds skills/players/archetypes/badges/daily pool.
+- JWT (7-day) + bcrypt; token in response body, `Authorization: Bearer` header; `?token=` for file serving.
+- AI via `emergentintegrations` LlmChat (Claude Sonnet 5) + OpenAITextToSpeech; TTS cached in Mongo by sha256.
+- Object Storage for videos (init at startup); owner-isolated file serving.
+- Frontend React (CRA + craco `@` alias), react-router, Tailwind, shadcn/ui, lucide icons, sonner toasts. AuthContext + Protected/PublicOnly routes; onboarding gate.
+
+## Personas
+- HS/College player chasing a target archetype; wants daily direction, form feedback, and progress tracking.
+
+## Core Requirements (static)
+Auth, deep onboarding, dashboard, AI coach (+TTS), training plan generator, shot tracker + SVG heatmap, form analysis (photo), film room (webcam/upload + frame extraction + multi-frame analysis), clip history, pressure mode, weekly report, skill library (24 skills, YouTube + TTS walkthrough), player lab (20 seed + AI lookup), achievements/badges, share card.
+
+## Implemented (2026-06)
+- ✅ All features above, end-to-end, DB-backed. Tested 24/24 backend + all frontend flows.
+- ✅ MongoDB collections: users, messages, workouts, plans, shots, analyses, videos, challenges, tts_cache.
+- ✅ Dark athletic UI: lime #C6FF00 / blue #2F80FF, Barlow Condensed + JetBrains Mono, responsive sidebar + mobile bottom nav.
+- Fix: form/video prompt strings switched from `.format()` to `.replace()` (JSON-brace KeyError).
+
+## Backlog / Remaining
+- P1: Emergent Google social login (deferred by user).
+- P2 (from code review): async object-storage calls (to_thread/httpx), Mongo aggregations for shots/streak, TTS audio → object storage w/ TTL, rate-limit AI player lookup, signed file URLs instead of `?token=`.
+
+## Next Tasks
+- Add Google login when requested; consider splitting server.py into routers as features grow.
