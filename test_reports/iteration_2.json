@@ -1,0 +1,24 @@
+{
+  "summary": "Iteration 2 follow-up test of 4 NEW features only. Backend: 9/9 pytest cases green (POST /api/auth/google returns 401 on invalid session; login/signup/me regression still pass; GET /api/progress/trends returns 8 buckets with non-null int dev_score <=99, fg_pct int|null; GET /api/dashboard includes trained_today bool; fresh signed-up user gets trained_today=false). Frontend: /auth shows data-testid='google-login'; /report renders trend-chart with recharts SVG and 4 line paths, labels include FG% and DEV; /coach handsfree-toggle + handsfree-switch toggles unchecked->checked; sending a message with hands-free ON fires POST /api/tts (1 request captured); manual coach-tts-btn still present on assistant messages; on Dashboard smoke user had trained_today=false so streak-nudge banner rendered with nudge-train and nudge-dismiss, and clicking nudge-dismiss hid the banner correctly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/iter2_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth_google uses sync `requests.get` inside an async endpoint; wrap in asyncio.to_thread or use httpx.AsyncClient to avoid blocking the event loop.",
+    "auth_google inserts the user with `password_hash: None`; ensure /api/auth/login rejects empty/None password_hash rather than allowing empty-string bypass (verify verify_password handles None safely).",
+    "progress_trends pulls up to 10k shots + 5k workouts into memory each request; add a $gte week-window filter or Mongo aggregation before scale.",
+    "Dashboard nudge dismiss state is stored in localStorage per-day key `nudge-<date>` - fine, but the banner will re-appear after midnight even if user has already dismissed and then trains; low priority.",
+    "TrendChart 8-bucket loop calls `_parse_dt` for every shot in every iteration (O(8*N)); pre-bucket shots once by iterating N to save CPU on larger histories."
+  ],
+  "updated_files": ["/app/backend/tests/test_new_features.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% of tested new-feature flows"},
+  "test_credentials": "smoke@test.com / test1234 (already onboarded, streak=1, trained_today may flip depending on daily workouts).",
+  "seed_data_creation": "Created 2 fresh TEST_ users (one for signup regression, one onboarded with zero workouts to verify trained_today=false). No production data mutated.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 4 new features working end-to-end. Note: coach-preset buttons only render when messages.length==0; smoke user already has chat history so tests must fall back to coach-input + coach-send (both flows verified). AI reply + TTS auto-trigger latency ~10-25s; use 40s timeouts. Real Google OAuth flow not automated - only backend 401 error path validated as instructed."
+}

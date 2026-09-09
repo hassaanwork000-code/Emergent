@@ -6,6 +6,7 @@ import AppLayout from "@/components/AppLayout";
 import { Loading } from "@/components/common";
 
 import Auth from "@/pages/Auth";
+import AuthCallback from "@/pages/AuthCallback";
 import Onboarding from "@/pages/Onboarding";
 import Dashboard from "@/pages/Dashboard";
 import Coach from "@/pages/Coach";
@@ -39,30 +40,39 @@ function PublicOnly({ children }) {
   return children;
 }
 
+function AppRoutes() {
+  const location = useLocation();
+  // Synchronously handle the Google OAuth return before any protected route runs
+  if (location.hash?.includes("session_id=")) return <AuthCallback />;
+  return (
+    <Routes>
+      <Route path="/login" element={<PublicOnly><Auth /></PublicOnly>} />
+      <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
+      <Route path="/" element={<Protected><Dashboard /></Protected>} />
+      <Route path="/coach" element={<Protected><Coach /></Protected>} />
+      <Route path="/training" element={<Protected><TrainingPlan /></Protected>} />
+      <Route path="/shots" element={<Protected><ShotTracker /></Protected>} />
+      <Route path="/form" element={<Protected><FormAnalysis /></Protected>} />
+      <Route path="/film" element={<Protected><FilmRoom /></Protected>} />
+      <Route path="/clips" element={<Protected><ClipHistory /></Protected>} />
+      <Route path="/pressure" element={<Protected><Pressure /></Protected>} />
+      <Route path="/report" element={<Protected><WeeklyReport /></Protected>} />
+      <Route path="/skills" element={<Protected><SkillLibrary /></Protected>} />
+      <Route path="/skills/:slug" element={<Protected><SkillDetail /></Protected>} />
+      <Route path="/players" element={<Protected><PlayerLab /></Protected>} />
+      <Route path="/players/:id" element={<Protected><PlayerDetail /></Protected>} />
+      <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   return (
     <div className="App">
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<PublicOnly><Auth /></PublicOnly>} />
-            <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
-            <Route path="/" element={<Protected><Dashboard /></Protected>} />
-            <Route path="/coach" element={<Protected><Coach /></Protected>} />
-            <Route path="/training" element={<Protected><TrainingPlan /></Protected>} />
-            <Route path="/shots" element={<Protected><ShotTracker /></Protected>} />
-            <Route path="/form" element={<Protected><FormAnalysis /></Protected>} />
-            <Route path="/film" element={<Protected><FilmRoom /></Protected>} />
-            <Route path="/clips" element={<Protected><ClipHistory /></Protected>} />
-            <Route path="/pressure" element={<Protected><Pressure /></Protected>} />
-            <Route path="/report" element={<Protected><WeeklyReport /></Protected>} />
-            <Route path="/skills" element={<Protected><SkillLibrary /></Protected>} />
-            <Route path="/skills/:slug" element={<Protected><SkillDetail /></Protected>} />
-            <Route path="/players" element={<Protected><PlayerLab /></Protected>} />
-            <Route path="/players/:id" element={<Protected><PlayerDetail /></Protected>} />
-            <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AppRoutes />
         </BrowserRouter>
         <Toaster position="top-center" theme="dark" />
       </AuthProvider>

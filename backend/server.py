@@ -330,6 +330,34 @@ async def login(body: LoginBody):
     return {"token": create_token(user["id"], email), "user": public_user(user)}
 
 
+class GoogleAuthBody(BaseModel):
+    session_id: str
+
+
+@api_router.post("/auth/google")
+async def auth_google(body: GoogleAuthBody):
+    try:
+        r = requests.get("https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                         headers={"X-Session-ID": body.session_id}, timeout=30)
+        r.raise_for_status()
+        info = r.json()
+    except Exception as e:
+        logger.error(f"google session failed: {e}")
+        raise HTTPException(status_code=401, detail="Google authentication failed")
+    email = (info.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="No email returned from Google")
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user:
+        uid = str(uuid.uuid4())
+        user = {"id": uid, "email": email, "name": info.get("name") or email.split("@")[0],
+                "password_hash": None, "google_id": info.get("id"), "profile": None, "created_at": now_iso()}
+        await db.users.insert_one({k: v for k, v in user.items()})
+    elif not user.get("google_id"):
+        await db.users.update_one({"id": user["id"]}, {"$set": {"google_id": info.get("id")}})
+    return {"token": create_token(user["id"], email), "user": public_user(user)}
+
+
 @api_router.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return {"user": public_user(user)}
@@ -374,15 +402,56 @@ async def dashboard(user: dict = Depends(get_current_user)):
     day_of_year = datetime.now(timezone.utc).timetuple().tm_yday
     daily_1pct = DAILY_1PCT[day_of_year % len(DAILY_1PCT)]
     development_score = min(99, 50 + pct // 4 + sessions_30d * 2 + streak * 3)
+    trained_today = await db.workouts.count_documents({"user_id": user["id"], "date": date.today().isoformat()}) > 0
 
     return {
         "priority": priority, "priority_why": priority_why,
         "shot_pct": pct, "makes": makes, "attempts": attempts,
-        "streak": streak, "sessions_30d": sessions_30d,
+        "streak": streak, "sessions_30d": sessions_30d, "trained_today": trained_today,
         "daily_1pct": daily_1pct, "development_score": development_score,
         "archetype": p.get("primary_archetype"), "secondary": p.get("secondary_archetype"),
         "target": p.get("target_archetype"), "name": user.get("name"),
     }
+
+
+def _parse_dt(c):
+    try:
+        d = datetime.fromisoformat(c)
+        return d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d
+    except Exception:
+        return None
+
+
+def _week_start(dt):
+    days_since_sun = (dt.weekday() + 1) % 7  # Sunday-based week start
+    return (dt - timedelta(days=days_since_sun)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+@api_router.get("/progress/trends")
+async def progress_trends(user: dict = Depends(get_current_user)):
+    uid = user["id"]
+    shots = await db.shots.find({"user_id": uid}, {"_id": 0}).to_list(10000)
+    workouts = await db.workouts.find({"user_id": uid}, {"_id": 0}).to_list(5000)
+    cur_ws = _week_start(datetime.now(timezone.utc))
+    weeks = []
+    for i in range(8):
+        ws = cur_ws - timedelta(weeks=(7 - i))
+        we = ws + timedelta(days=7)
+        wk_shots = [s for s in shots if (p := _parse_dt(s.get("created_at", ""))) and ws <= p < we]
+        made = sum(1 for s in wk_shots if s.get("made"))
+        att = len(wk_shots)
+        fg = round(made / att * 100) if att else None
+        cum_shots = [s for s in shots if (p := _parse_dt(s.get("created_at", ""))) and p < we]
+        c_made = sum(1 for s in cum_shots if s.get("made"))
+        c_att = len(cum_shots)
+        cum_pct = round(c_made / c_att * 100) if c_att else 0
+        wk_workouts = [w for w in workouts if (p := _parse_dt(w.get("created_at", ""))) and ws <= p < we]
+        w_sessions = len(wk_workouts)
+        w_active = len(set(w.get("date") for w in wk_workouts))
+        dev = min(99, 50 + cum_pct // 4 + w_sessions * 2 + w_active * 3)
+        weeks.append({"week": ws.date().isoformat(), "label": ws.strftime("%b %d"),
+                      "fg_pct": fg, "dev_score": dev, "attempts": att})
+    return {"weeks": weeks}
 
 
 # ---------------- Coach ----------------

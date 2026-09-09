@@ -5,7 +5,7 @@ import { Loading } from "@/components/common";
 import ShareCard from "@/components/ShareCard";
 import {
   Flame, Zap, MessageSquare, Dumbbell, Target, Video, Timer, BookOpen, Users, Trophy,
-  TrendingUp, ArrowRight, ScanLine, CalendarDays,
+  TrendingUp, ArrowRight, ScanLine, CalendarDays, Bell, X,
 } from "lucide-react";
 
 const QUICK = [
@@ -23,11 +23,31 @@ const QUICK = [
 
 export default function Dashboard() {
   const [d, setD] = useState(null);
+  const [nudgeClosed, setNudgeClosed] = useState(false);
 
   useEffect(() => { api.get("/dashboard").then(({ data }) => setD(data)); }, []);
+
+  useEffect(() => {
+    if (!d || d.trained_today) return;
+    const key = `nudge-${new Date().toISOString().slice(0, 10)}`;
+    if (localStorage.getItem(key)) return;
+    if (typeof Notification === "undefined") return;
+    const fire = () => {
+      if (Notification.permission !== "granted") return;
+      localStorage.setItem(key, "1");
+      const body = d.streak > 0
+        ? `Keep your ${d.streak}-day streak alive — get a session in today.`
+        : "Start a new training streak today. One session is all it takes.";
+      try { new Notification("Elite AI Basketball Coach", { body }); } catch { /* ignore */ }
+    };
+    if (Notification.permission === "granted") fire();
+    else if (Notification.permission !== "denied") Notification.requestPermission().then((p) => { if (p === "granted") fire(); });
+  }, [d]);
+
   if (!d) return <Loading />;
 
   const scorePct = d.development_score;
+  const showNudge = !d.trained_today && !nudgeClosed;
 
   return (
     <div className="space-y-6">
@@ -43,6 +63,26 @@ export default function Dashboard() {
         <ShareCard title="Development" subtitle="Elite AI Basketball Coach" playerName={d.name}
           lines={[{ label: "Dev Score", value: `${d.development_score}` }, { label: "Day Streak", value: `${d.streak}` }]} />
       </div>
+
+      {showNudge && (
+        <div data-testid="streak-nudge" className="fade-up flex items-center justify-between gap-4 surface p-4 border-l-2 border-l-[#FFB300]">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-[#FFB300]/15 flex items-center justify-center shrink-0">
+              <Bell className="h-5 w-5 text-[#FFB300]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">
+                {d.streak > 0 ? `Don't break your ${d.streak}-day streak` : "Start a training streak today"}
+              </p>
+              <p className="text-xs text-gray-400">You haven't logged a session today. A quick workout keeps the momentum.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/training" data-testid="nudge-train" className="btn-lime rounded-full px-4 py-2 text-xs">Train now</Link>
+            <button data-testid="nudge-dismiss" onClick={() => setNudgeClosed(true)} className="text-gray-500 hover:text-white transition-colors"><X className="h-4 w-4" /></button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Priority */}

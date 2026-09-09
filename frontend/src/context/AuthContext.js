@@ -10,6 +10,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true;
     async function load() {
+      // Returning from Google OAuth — let AuthCallback exchange the session_id first
+      if (window.location.hash?.includes("session_id=")) return;
       if (!token) { setUser(false); return; }
       try {
         const { data } = await api.get("/auth/me");
@@ -41,6 +43,12 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const loginWithGoogle = async (session_id) => {
+    const { data } = await api.post("/auth/google", { session_id });
+    applyAuth(data);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
@@ -54,7 +62,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, refreshUser, setUser }}>
+    <AuthContext.Provider value={{ user, login, signup, loginWithGoogle, logout, refreshUser, setUser }}>
       {children}
     </AuthContext.Provider>
   );

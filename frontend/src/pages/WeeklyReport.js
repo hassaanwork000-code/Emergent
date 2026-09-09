@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, Loading } from "@/components/common";
 import ShareCard from "@/components/ShareCard";
+import TrendChart from "@/components/TrendChart";
 import { CalendarDays, TrendingUp, TrendingDown, Minus, Target, Dumbbell, Video, Flame } from "lucide-react";
 
 export default function WeeklyReport() {
@@ -18,13 +19,14 @@ export default function WeeklyReport() {
         action={<ShareCard title="Week Recap" subtitle={`${r.week_start} → ${r.week_end}`} lines={[{ label: "FG%", value: `${r.shot_pct}%` }, { label: "Active Days", value: `${r.active_days}` }]} />} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 fade-up">
-        <Metric icon={Target} label="Made" value={r.shots_made} />
-        <Metric icon={Target} label="Attempts" value={r.shots_attempted} />
+        <Metric icon={Target} label="Made" value={r.shots_made} />        <Metric icon={Target} label="Attempts" value={r.shots_attempted} />
         <Metric icon={Target} label="FG%" value={`${r.shot_pct}%`} accent="#00E676" />
         <Metric icon={Dumbbell} label="Workouts" value={r.workouts} />
         <Metric icon={Flame} label="Active Days" value={r.active_days} accent="#FFB300" />
         <Metric icon={Video} label="Films" value={r.films} accent="#2F80FF" />
       </div>
+
+      <div className="mt-6"><TrendChart /></div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <div className="surface p-6 fade-up">

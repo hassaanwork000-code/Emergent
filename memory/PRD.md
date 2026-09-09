@@ -25,10 +25,16 @@ Responsive web app (desktop + mobile) for ambitious basketball players acting as
 Auth, deep onboarding, dashboard, AI coach (+TTS), training plan generator, shot tracker + SVG heatmap, form analysis (photo), film room (webcam/upload + frame extraction + multi-frame analysis), clip history, pressure mode, weekly report, skill library (24 skills, YouTube + TTS walkthrough), player lab (20 seed + AI lookup), achievements/badges, share card.
 
 ## Implemented (2026-06)
-- ✅ All features above, end-to-end, DB-backed. Tested 24/24 backend + all frontend flows.
+- ✅ All core features, end-to-end, DB-backed. Tested 24/24 backend + all frontend flows (iteration_1).
 - ✅ MongoDB collections: users, messages, workouts, plans, shots, analyses, videos, challenges, tts_cache.
 - ✅ Dark athletic UI: lime #C6FF00 / blue #2F80FF, Barlow Condensed + JetBrains Mono, responsive sidebar + mobile bottom nav.
 - Fix: form/video prompt strings switched from `.format()` to `.replace()` (JSON-brace KeyError).
+
+### Follow-up features (2026-06, iteration_2 — 9/9 green)
+- ✅ Emergent Google login alongside email/password — converges on the same app JWT (POST /api/auth/google exchanges session_id; AuthCallback stores token). No cookies.
+- ✅ AI Coach hands-free mode — toggle auto-speaks every reply via OpenAI TTS onyx.
+- ✅ Progress Trends — GET /api/progress/trends (8-week buckets: fg_pct + dev_score); recharts line chart on Weekly Report.
+- ✅ Streak reminders — dashboard `trained_today` drives a nudge banner + once-a-day browser Notification.
 
 ## Backlog / Remaining
 - P1: Emergent Google social login (deferred by user).

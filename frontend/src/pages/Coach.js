@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api, useTTS } from "@/lib/api";
 import { PageHeader } from "@/components/common";
-import { MessageSquare, Send, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { MessageSquare, Send, Volume2, VolumeX, Loader2, Headphones } from "lucide-react";
 
 const PRESETS = [
   "What should I work on today?",
@@ -15,6 +16,7 @@ export default function Coach() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState(null);
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const { speak, playing, loading: ttsLoading } = useTTS();
   const scrollRef = useRef(null);
 
@@ -30,6 +32,7 @@ export default function Coach() {
     try {
       const { data } = await api.post("/coach/chat", { message: msg });
       setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
+      if (autoSpeak) { setSpeakingIdx(-1); speak(data.reply); }
     } catch {
       setMessages((m) => [...m, { role: "assistant", text: "Something went wrong. Try again." }]);
     } finally {
@@ -44,7 +47,14 @@ export default function Coach() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-9rem)] lg:h-[calc(100vh-5rem)]">
-      <PageHeader title="AI Coach" subtitle="Advice tuned to your profile, archetype and weaknesses." icon={MessageSquare} />
+      <PageHeader title="AI Coach" subtitle="Advice tuned to your profile, archetype and weaknesses." icon={MessageSquare}
+        action={
+          <div className="flex items-center gap-2.5 surface px-3.5 py-2.5" data-testid="handsfree-toggle">
+            <Headphones className={`h-4 w-4 ${autoSpeak ? "text-[#2F80FF]" : "text-gray-500"}`} />
+            <span className="text-xs uppercase tracking-widest text-gray-400 hidden sm:inline">Hands-free</span>
+            <Switch checked={autoSpeak} onCheckedChange={setAutoSpeak} data-testid="handsfree-switch" />
+          </div>
+        } />
 
       <div ref={scrollRef} data-testid="coach-messages" className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
         {messages.length === 0 && !sending && (
