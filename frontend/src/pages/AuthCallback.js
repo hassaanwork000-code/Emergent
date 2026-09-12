@@ -23,7 +23,7 @@ export default function AuthCallback() {
         navigate(u.profile ? "/" : "/onboarding", { replace: true });
       })
       .catch(() => { setError(true); setTimeout(() => navigate("/login", { replace: true }), 1600); });
-  }, []);
+}, [loginWithGoogle, navigate]);
 
   return (
     <div className="min-h-screen bg-[#0A0A0C] grid-bg flex items-center justify-center">
